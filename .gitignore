@@ -4,3 +4,4 @@ disassembly
 *.ips
 *.zip
 *.pcmenc
+*.sym
