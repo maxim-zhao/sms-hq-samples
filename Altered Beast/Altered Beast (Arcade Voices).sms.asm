@@ -7,21 +7,19 @@ defaultslot 2
 .endme
 
 .rombankmap
-bankstotal 20 ; multiple of 4 for better compatibility
+bankstotal 40 ; multiple of 4 for better Everdrive compatibility
 banksize $4000
-banks 20
+banks 40
 .endro
 
-.background "Space Harrier [50 & 60 Hz].sms"
-.unbackground $40000 $4bfff ; expansion space
-.unbackground $1a70a $1bfff ; old samples
-.unbackground $1dda $1e03 ; old sample player entry
-.unbackground $7e62 $7fef ; old sample player
+.background "Altered Beast.sms"
+.unbackground $32cc7 $33fff ; old sample player and old samples
 
 .bank 1 slot 1
 .section "Replayer" free
 .include "../Common/replayer_core_p4_rto3_8kHz.asm"
 PrepareForSample:
+  ; Set PSG channel settings
   push hl
   push bc
     ld hl,+
@@ -59,6 +57,7 @@ PlaySample:
   ret
 .ends
 
+/*
 .bank 0 slot 0
 .orga $1dda
 .section "Get Ready sound test" force
@@ -86,13 +85,7 @@ b2:
 .section "Welcome hack part 1" overwrite
   call WelcomeHack
 .ends
-/*
-.orga $1303
-.section "Welcome hack" overwrite
-Hack:
-call WelcomeHack
-.ends
-*/
+
 .bank 1 slot 1
 .section "WelcomeHack" free
 WelcomeHack:
@@ -140,15 +133,26 @@ b4:
   call PlaySample
   nop ; to balance space
 .ends
-
+*/
 
 ; We add our data at the end of the ROM
-
 .include "../Common/addfile.asm"
 .define databank 16
 .define bankspace $4000
 .bank databank slot 2
 .org 0
-Welcome:  addfile "welcometothefantasyzone.8k.wav.pcmenc"
-Aargh:    addfile "aargh.8k.wav.pcmenc"
-GetReady: addfile "getready.8k.wav.pcmenc"
+Aaaaaaaaaaa:        addfile "Aaaaaaaaaaa.wav.pcmenc"
+Aaaaaargh:          addfile "Aaaaaargh.wav.pcmenc"
+Growl1:             addfile "Growl 1.wav.pcmenc"
+Growl2:             addfile "Growl 2.wav.pcmenc"
+Growl3:             addfile "Growl 3.wav.pcmenc"
+Growl4:             addfile "Growl 4.wav.pcmenc"
+Ha:                 addfile "Ha.wav.pcmenc"
+Hahahahaha:         addfile "Hahahahaha.wav.pcmenc"
+HuhUh:              addfile "Huh,uh.wav.pcmenc"
+NeverGiveUp:        addfile "Never Give Up.wav.pcmenc"
+PowerUp:            addfile "Power Up!.wav.pcmenc"
+RiseFromYourGrave:  addfile "Rise From Your Grave.wav.pcmenc"
+Uh:                 addfile "Uh.wav.pcmenc"
+WelcomeToYourDoom:  addfile "Welcome To Your Doom!.wav.pcmenc"
+Wolf:               addfile "Wolf.wav.pcmenc"

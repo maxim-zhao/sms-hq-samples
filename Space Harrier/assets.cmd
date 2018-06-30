@@ -1,1 +1,1 @@
-for %%f in (*.wav) do ..\..\c\pcmenc\encoder\x64\Release\pcmenc.exe -rto 1 -p 4 -dt1 12 -dt2 12 -dt3 423 "%%f"
+for %%f in (*.wav) do ..\..\..\c\pcmenc\encoder\x64\Release\pcmenc.exe -rto 1 -p 4 -dt1 12 -dt2 12 -dt3 423 "%%f"

@@ -5,3 +5,5 @@ disassembly
 *.zip
 *.pcmenc
 *.sym
+disasm
+*/original samples/
