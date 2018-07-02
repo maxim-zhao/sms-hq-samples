@@ -1,3 +1,6 @@
+; Macros for adding pcmenc data
+; Set the org and bank/slot, and define databank and bankspace accordingly before calling addfile for each file. Add your own labels.
+
 .macro addfilechunks args filename, offset, bytesremaining
   ; calculate the amount to write
   .if bytesremaining > bankspace
@@ -44,6 +47,15 @@
   .printt " ("
   .printv dec filesize
   .printt " bytes): "
+  
+  ; Compute the chunk count
+  ; = 1 + ceil((size - free - 3) / (maximum size + 2))
+  .db (filesize - bankspace - 3) / 16382 + 2
+  .redefine bankspace bankspace-1
+  .printt "needs "
+  .printv dec (filesize - bankspace - 3) / 16382 + 2
+  .printt " banks: "
+  
   
   ; add as chunks
   addfilechunks filename 2 filesize
