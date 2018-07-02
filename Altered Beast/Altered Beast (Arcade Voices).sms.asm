@@ -1,23 +1,148 @@
 .memorymap
-slotsize $4000
+slotsize $7ff0
 slot 0 $0000
-slot 1 $4000
+slotsize $0010
+slot 1 $7ff0
+slotsize $4000
 slot 2 $8000
 defaultslot 2
 .endme
 
 .rombankmap
-bankstotal 40 ; multiple of 4 for better Everdrive compatibility
+bankstotal 32 ; multiple of 4 for better Everdrive compatibility
+banksize $7ff0
+banks 1
+banksize $0010
+banks 1
 banksize $4000
-banks 40
+banks 30
 .endro
 
 .background "Altered Beast.sms"
 .unbackground $32cc7 $33fff ; old sample player and old samples
 
-.bank 1 slot 1
+; Because the sample player was in the same bank as its data, and gets invoked from paged code, we want to find some low memory space to put ours...
+; Last 297 bytes of bank 1 seem unused... we also take out the header as we want to rewrite it...
+.unbackground $7ec7 $7fff
+
+; We add an SDSC header...
+.sdsctag 1.0, "Altered Beast (Arcade Voices)", "A hack of Altered Best to restore the sampled audio from the original arcade game", "Maxim"
+; ...and restore the original product code...
+.smsheader
+  productcode $18, $70, 0 ; 2.5 bytes
+.endsms
+
+; RAM mapping
+.define RAM_LevelNumber $c08d
+
+.bank 0 slot 0
+.orga $7ec7
 .section "Replayer" free
 .include "../Common/replayer_core_p4_rto3_8kHz.asm"
+.ends
+
+.section "Low code" free
+PlaySampleLowCode:
+  ld a,($ffff)
+  push af
+    ld a,c
+    ld ($ffff),a
+    ld b,(hl) ; block count
+    inc hl
+-:  push bc
+      call PLAY_SAMPLE
+    pop bc
+    inc c
+    ld a,c
+    ld ($ffff),a
+    ld hl,$8000
+    djnz -
+  pop af
+  ; Restore paging
+  ld ($ffff),a
+  ret
+.ends
+
+.bank 12 slot 2
+
+; Code hooks
+
+.org $2cc7
+.section "Power Up" force
+PlayPowerUp:
+  ld c,:PowerUp
+  ld hl,PowerUp
+  jp PlaySample
+.ends
+
+.org $2cd5
+.section "Laugh" force
+PlayLaugh:
+  ld c,:Hahahahaha
+  ld hl,Hahahahaha
+  jp PlaySample
+.ends
+
+.org $2d3b
+.section "PlayDeath" force
+PlayDeath:
+  ld c,:Aaaaaargh
+  ld hl,Aaaaaargh
+  jp PlaySample
+.ends
+
+.org $2d49
+.section "PlayRoar" force
+PlayRoar:
+  ld a,(RAM_LevelNumber)
+  or a
+  jp z,+
+  dec a
+  jp z,++
+  dec a
+  jp z,++
+  dec a
+  jp z,++
+  ; Stage 5: fall through for wolf again
++:
+  ld c,:Wolf
+  ld hl,Wolf
+  jp PlaySample
+++:
+  ld c,:Growl4
+  ld hl,Growl4
+  jp PlaySample
++:
+  ld c,:Growl2
+  ld hl,Growl2
+  jp PlaySample
++:
+  ld c,:Growl3
+  ld hl,Growl3
+  jp PlaySample
+.ends
+
+; Supporting code, can go anywhere
+
+.section "Play sample" free
+PlaySample:
+  ; Stop music - from original game
+  call $888d
+  ld a,$81
+  out ($7f),a
+  xor a
+  out ($f2),a
+  ; Prepare
+  call PrepareForSample
+  ; Play it
+  call PlaySampleLowCode
+  ; Resume music - from original game
+  ld a,($df00)
+  out ($f2),a
+  jp $8372 ; and ret  
+.ends
+
+.section "Prepare for sample" free
 PrepareForSample:
   ; Set PSG channel settings
   push hl
@@ -30,110 +155,7 @@ PrepareForSample:
   ret
 +:
 .db $9f $bf $df $ff $81 $00 $a1 $00 $00 $c1 $00
-++:
 .ends
-.section "Sample players" free
-PlaySampleDI:
-  di
-    call PlaySample
-  ei
-  ret
-
-PlaySample:
-  call PrepareForSample
-  ld a,c
-  ld ($ffff),a
-  ld b,(hl) ; block count
-  inc hl
--:
-  push bc
-    call PLAY_SAMPLE
-  pop bc
-  inc c
-  ld a,c
-  ld ($ffff),a
-  ld hl,$8000
-  djnz -
-  ret
-.ends
-
-/*
-.bank 0 slot 0
-.orga $1dda
-.section "Get Ready sound test" force
-b1:
-  ld c,:GetReady
-  ld hl,GetReady
-  jp PlaySampleDI
-.ends
-.orga $1de2
-.section "Aargh sound test" force
-b2:
-  ld c,:Aargh
-  ld hl,Aargh
-  jp PlaySampleDI
-.ends
-
-; 11fb start music in game (3b)
-.orga $11fb
-.section "Welcome hack part 0" overwrite
-  ; don't start music yet
-  ld ($c700),a ; not sure if I can use this?
-.ends
-
-.orga $12dc
-.section "Welcome hack part 1" overwrite
-  call WelcomeHack
-.ends
-
-.bank 1 slot 1
-.section "WelcomeHack" free
-WelcomeHack:
-  ; What I replaced to get here
-  call $5063
-  
-  ; We only want to play at the start of the game. We check if the score is zero... (there may be a better way)
-  ld hl, $dfba
-  ld a,(hl)
-  inc hl
-  or (hl)
-  inc hl
-  or (hl)
-  inc hl
-  or (hl)
-  ret nz
-
-  call PrepareForSample
-  ld c,:Welcome
-  ld hl,Welcome
-  call PlaySample
-  ld c,:GetReady
-  ld hl,GetReady
-  call PlaySample
-  ; Start music
-  ld a,($c700)
-  ld ($c000),a
-  ret
-.ends
-
-.bank 1 slot 1
-.orga $7e2a
-.section "Aargh in-game" overwrite
-b3:
-  ld c,:Aargh
-  ld hl,Aargh
-  jp PlaySample
-.ends
-
-.orga $7e4f
-.section "Get Ready in-game?" overwrite
-b4:
-  ld C,:GetReady
-  ld hl,GetReady
-  call PlaySample
-  nop ; to balance space
-.ends
-*/
 
 ; We add our data at the end of the ROM
 .include "../Common/addfile.asm"
@@ -141,18 +163,18 @@ b4:
 .define bankspace $4000
 .bank databank slot 2
 .org 0
-Aaaaaaaaaaa:        addfile "Aaaaaaaaaaa.wav.pcmenc"
-Aaaaaargh:          addfile "Aaaaaargh.wav.pcmenc"
-Growl1:             addfile "Growl 1.wav.pcmenc"
-Growl2:             addfile "Growl 2.wav.pcmenc"
-Growl3:             addfile "Growl 3.wav.pcmenc"
-Growl4:             addfile "Growl 4.wav.pcmenc"
-Ha:                 addfile "Ha.wav.pcmenc"
-Hahahahaha:         addfile "Hahahahaha.wav.pcmenc"
-HuhUh:              addfile "Huh,uh.wav.pcmenc"
-NeverGiveUp:        addfile "Never Give Up.wav.pcmenc"
-PowerUp:            addfile "Power Up!.wav.pcmenc"
-RiseFromYourGrave:  addfile "Rise From Your Grave.wav.pcmenc"
-Uh:                 addfile "Uh.wav.pcmenc"
-WelcomeToYourDoom:  addfile "Welcome To Your Doom!.wav.pcmenc"
-Wolf:               addfile "Wolf.wav.pcmenc"
+;Aaaaaaaaaaa:        addfile "Aaaaaaaaaaa.wav.pcmenc" ; Unused?
+Aaaaaargh:          addfile "Aaaaaargh.wav.pcmenc" ; Player death
+;Growl1:             addfile "Growl 1.wav.pcmenc" ; Unused?
+Growl2:             addfile "Growl 2.wav.pcmenc" ; Transform to bear (stage 3)
+Growl3:             addfile "Growl 3.wav.pcmenc" ; Transform to tiger (stage 4)
+Growl4:             addfile "Growl 4.wav.pcmenc" ; Transform to dragon (stage 2)
+;Ha:                 addfile "Ha.wav.pcmenc" ; Unused?
+Hahahahaha:         addfile "Hahahahaha.wav.pcmenc" ; Nef takes porbs after boos is defeated
+;HuhUh:              addfile "Huh,uh.wav.pcmenc" ; Unused?
+NeverGiveUp:        addfile "Never Give Up.wav.pcmenc" ; Continue
+PowerUp:            addfile "Power Up!.wav.pcmenc" ; First two power orbs
+RiseFromYourGrave:  addfile "Rise From Your Grave.wav.pcmenc" ; Start of game
+Uh:                 addfile "Uh.wav.pcmenc" ; Player damage
+WelcomeToYourDoom:  addfile "Welcome To Your Doom!.wav.pcmenc" ; Boss battle
+Wolf:               addfile "Wolf.wav.pcmenc" ; Transform to wolf (stages 1 and 5)
