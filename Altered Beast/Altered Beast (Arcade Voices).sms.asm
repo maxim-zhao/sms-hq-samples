@@ -25,8 +25,12 @@ banks 30
 ; Last 297 bytes of bank 1 seem unused... we also take out the header as we want to rewrite it...
 .unbackground $7ec7 $7fff
 
+; We need some space for the SDSC description somewhere in the lower 64KB... TODO not supported...
+;.unbackground $fed0 $ffff
+
 ; We add an SDSC header...
-.sdsctag 1.0, "Altered Beast (Arcade Voices)", "A hack of Altered Best to restore the sampled audio from the original arcade game", "Maxim"
+;.sdsctag 1.0, "Altered Beast (Arcade Voices)", "A hack of Altered Beast to restore the sampled audio from the original arcade game", "Maxim"
+
 ; ...and restore the original product code...
 .smsheader
   productcode $18, $70, 0 ; 2.5 bytes
@@ -34,6 +38,8 @@ banks 30
 
 ; RAM mapping
 .define RAM_LevelNumber $c08d
+.define RAM_FramesPerLetter $c080
+.define RAM_ModeControl $c0df
 
 .bank 0 slot 0
 .orga $7ec7
@@ -60,6 +66,71 @@ PlaySampleLowCode:
   pop af
   ; Restore paging
   ld ($ffff),a
+  ret
+.ends
+
+; Code hooks
+.org $0fb7
+.section "Game start hook" overwrite
+ call StartHack
+.ends
+
+.org $f5e
+.section "nop out sound effect start" overwrite
+.repeat 5
+  nop
+.endr
+.ends
+
+.org $873
+.section "Disable level 1 music start" overwrite
+.db 0
+.ends
+
+.section "Game start hack" free
+StartHack:
+  ld a,(RAM_FramesPerLetter)
+  cp 4 ; special start value
+  jr nz,+
+  
+  ; Play sample
+  di
+  ld c,:RiseFromYourGrave
+  ld hl,RiseFromYourGrave
+  ld a,:PlaySample
+  ld ($ffff),a
+  call PlaySample
+  ei
+
+	ld a, $85 ; level 1 music
+	call $85C ; EnqueueMusicControl
+	ld a, $9B ; rise from grave sound effect
+	call $85C ; EnqueueMusicControl
+
+	; what we replaced to get here 
++:ld hl, RAM_FramesPerLetter
+  ret
+.ends
+
+.orga $2757
+.section "Boss fight hook" overwrite
+  jp BossFightHack
+.ends
+
+.section "Boss fight hack" free
+BossFightHack:
+  ; Play sample
+  di
+  ld c,:WelcomeToYourDoom
+  ld hl,WelcomeToYourDoom
+  ld a,:PlaySample
+  ld ($ffff),a
+  call PlaySample
+  ei
+  
+  ; What we replaced to get here
+	ld a, $01 ; start fade out (?)
+	ld (RAM_ModeControl), a
   ret
 .ends
 
@@ -163,18 +234,22 @@ PrepareForSample:
 .define bankspace $4000
 .bank databank slot 2
 .org 0
-;Aaaaaaaaaaa:        addfile "Aaaaaaaaaaa.wav.pcmenc" ; Unused?
+; Used:
 Aaaaaargh:          addfile "Aaaaaargh.wav.pcmenc" ; Player death
-;Growl1:             addfile "Growl 1.wav.pcmenc" ; Unused?
+Wolf:               addfile "Wolf.wav.pcmenc" ; Transform to wolf (stages 1 and 5)
+Growl4:             addfile "Growl 4.wav.pcmenc" ; Transform to dragon (stage 2)
 Growl2:             addfile "Growl 2.wav.pcmenc" ; Transform to bear (stage 3)
 Growl3:             addfile "Growl 3.wav.pcmenc" ; Transform to tiger (stage 4)
-Growl4:             addfile "Growl 4.wav.pcmenc" ; Transform to dragon (stage 2)
-;Ha:                 addfile "Ha.wav.pcmenc" ; Unused?
-Hahahahaha:         addfile "Hahahahaha.wav.pcmenc" ; Nef takes porbs after boos is defeated
-;HuhUh:              addfile "Huh,uh.wav.pcmenc" ; Unused?
-NeverGiveUp:        addfile "Never Give Up.wav.pcmenc" ; Continue
+Hahahahaha:         addfile "Hahahahaha.wav.pcmenc" ; Nef takes orbs after boss is defeated
 PowerUp:            addfile "Power Up!.wav.pcmenc" ; First two power orbs
 RiseFromYourGrave:  addfile "Rise From Your Grave.wav.pcmenc" ; Start of game
-Uh:                 addfile "Uh.wav.pcmenc" ; Player damage
-WelcomeToYourDoom:  addfile "Welcome To Your Doom!.wav.pcmenc" ; Boss battle
-Wolf:               addfile "Wolf.wav.pcmenc" ; Transform to wolf (stages 1 and 5)
+WelcomeToYourDoom:  addfile "Welcome To Your Doom!.wav.pcmenc" ; Nef encounter
+
+; TODO:
+NeverGiveUp:        addfile "Never Give Up.wav.pcmenc" ; Continue
+
+;Aaaaaaaaaaa:        addfile "Aaaaaaaaaaa.wav.pcmenc" ; Unused?
+;Growl1:             addfile "Growl 1.wav.pcmenc" ; Unused?
+;Ha:                 addfile "Ha.wav.pcmenc" ; Unused?
+;HuhUh:              addfile "Huh,uh.wav.pcmenc" ; Unused?
+;Uh:                 addfile "Uh.wav.pcmenc" ; Player damage - unused in this version
