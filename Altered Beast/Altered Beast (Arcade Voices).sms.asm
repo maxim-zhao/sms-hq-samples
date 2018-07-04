@@ -1,3 +1,5 @@
+; ROM layout
+
 .memorymap
 slotsize $7ff0
 slot 0 $0000
@@ -18,21 +20,17 @@ banksize $4000
 banks 30
 .endro
 
+; The ROM to patch, with certain areas marked as free to use
 .background "Altered Beast.sms"
 .unbackground $32cc7 $33fff ; old sample player and old samples
+.unbackground $7ec7 $7fff ; unused space + header
+.unbackground $5B $65 ; unused space
 
-; Because the sample player was in the same bank as its data, and gets invoked from paged code, we want to find some low memory space to put ours...
-; Last 297 bytes of bank 1 seem unused... we also take out the header as we want to rewrite it...
-.unbackground $7ec7 $7fff
-.unbackground $5B $65
-
-; We add an SDSC header...
-.sdsctag 1.0, "Altered Beast (Arcade Voices)", "http://www.smspower.org/Hacks/AlteredBeast-SMS-ArcadeVoices-Mod", "Maxim"
-
-; ...and restore the original product code...
+; We add an SDSC header, which rewrites the header so we also restore some values to match the original ROM
 .smsheader
   productcode $18, $70, 0 ; 2.5 bytes
 .endsms
+.sdsctag 1.0, "Altered Beast (Arcade Voices)", "http://www.smspower.org/Hacks/AlteredBeast-SMS-ArcadeVoices-Mod", "Maxim"
 
 ; RAM mapping
 .define RAM_LevelNumber $c08d
@@ -41,7 +39,63 @@ banks 30
 .define RAM_ContinueCount $c088
 
 .bank 0 slot 0
-.org 0
+
+; Patches to places already playing samples
+
+.org $2cc7
+.section "Power Up" force
+PlayPowerUp:
+  ld c,:PowerUp
+  ld hl,PowerUp
+  jp PlaySample
+.ends
+
+.org $2cd5
+.section "Laugh" force
+PlayLaugh:
+  ld c,:Hahahahaha
+  ld hl,Hahahahaha
+  jp PlaySample
+.ends
+
+.org $2d3b
+.section "PlayDeath" force
+PlayDeath:
+  ld c,:Aaaaaargh
+  ld hl,Aaaaaargh
+  jp PlaySample
+.ends
+
+.org $2d49
+.section "PlayRoar" force
+PlayRoar:
+  ld a,(RAM_LevelNumber)
+  or a
+  jp z,+
+  dec a
+  jp z,++
+  dec a
+  jp z,++
+  dec a
+  jp z,++
+  ; Stage 5: fall through for wolf again
++:
+  ld c,:Wolf
+  ld hl,Wolf
+  jp PlaySample
+++:
+  ld c,:Growl4
+  ld hl,Growl4
+  jp PlaySample
++:
+  ld c,:Growl2
+  ld hl,Growl2
+  jp PlaySample
++:
+  ld c,:Growl3
+  ld hl,Growl3
+  jp PlaySample
+.ends
 
 .section "Replayer" free
 .include "../Common/replayer_core_p4_rto3_8kHz.asm"
@@ -157,60 +211,6 @@ PlayDI:
 
 ; Code hooks
 
-.org $2cc7
-.section "Power Up" force
-PlayPowerUp:
-  ld c,:PowerUp
-  ld hl,PowerUp
-  jp PlaySample
-.ends
-
-.org $2cd5
-.section "Laugh" force
-PlayLaugh:
-  ld c,:Hahahahaha
-  ld hl,Hahahahaha
-  jp PlaySample
-.ends
-
-.org $2d3b
-.section "PlayDeath" force
-PlayDeath:
-  ld c,:Aaaaaargh
-  ld hl,Aaaaaargh
-  jp PlaySample
-.ends
-
-.org $2d49
-.section "PlayRoar" force
-PlayRoar:
-  ld a,(RAM_LevelNumber)
-  or a
-  jp z,+
-  dec a
-  jp z,++
-  dec a
-  jp z,++
-  dec a
-  jp z,++
-  ; Stage 5: fall through for wolf again
-+:
-  ld c,:Wolf
-  ld hl,Wolf
-  jp PlaySample
-++:
-  ld c,:Growl4
-  ld hl,Growl4
-  jp PlaySample
-+:
-  ld c,:Growl2
-  ld hl,Growl2
-  jp PlaySample
-+:
-  ld c,:Growl3
-  ld hl,Growl3
-  jp PlaySample
-.ends
 
 ; Supporting code, can go anywhere in this bank
 

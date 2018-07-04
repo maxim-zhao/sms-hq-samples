@@ -34,6 +34,11 @@ banks 18
 .endsms
 .sdsctag 1.1, "Space Harrier (Arcade Voices)", "http://www.smspower.org/Hacks/SpaceHarrier-SMS-ArcadeVoices-Mod", "Maxim"
 
+; RAM mapping
+.define RAM_MusicControl $c000 ; Write here to play music
+.define RAM_Unused $c700 ; We use this for temporary storage
+.define RAM_Score $dfba ; 4 bytes BCD
+
 .bank 0 slot 0
 
 ; Patches to places already playing samples
@@ -71,7 +76,7 @@ banks 18
 .orga $11fb
 .section "Welcome hack part 0" overwrite
   ; don't start music yet - remember the value here (seems unused)
-  ld ($c700),a
+  ld (RAM_Unused),a
 .ends
 
 .orga $12dc
@@ -85,7 +90,7 @@ WelcomeHack:
   call $5063
   
   ; We only want to play at the start of the game. We check if the score is zero... (there may be a better way)
-  ld hl, $dfba
+  ld hl, RAM_Score
   ld a,(hl)
   inc hl
   or (hl)
@@ -105,8 +110,8 @@ WelcomeHack:
   call PlaySample
   ei
   ; Start music
-  ld a,($c700)
-  ld ($c000),a
+  ld a,(RAM_Unused)
+  ld (RAM_MusicControl),a
   ret
 .ends
 
