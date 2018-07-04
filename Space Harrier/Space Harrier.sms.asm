@@ -1,99 +1,84 @@
+; ROM layout
+
 .memorymap
-slotsize $4000
+slotsize $7ff0
 slot 0 $0000
-slot 1 $4000
+slotsize $0010
+slot 1 $7ff0
+slotsize $4000
 slot 2 $8000
 defaultslot 2
 .endme
 
 .rombankmap
-bankstotal 20 ; multiple of 4 for better compatibility
+bankstotal 20 ; multiple of 4 for better Everdrive compatibility
+banksize $7ff0
+banks 1
+banksize $0010
+banks 1
 banksize $4000
-banks 20
+banks 18
 .endro
 
+; The ROM to patch, with certain areas marked as free to use
 .background "Space Harrier [50 & 60 Hz].sms"
-.unbackground $40000 $4bfff ; expansion space
 .unbackground $1a70a $1bfff ; old samples
 .unbackground $1dda $1e03 ; old sample player entry
-.unbackground $7e62 $7fef ; old sample player
+.unbackground $7e62 $7fff ; old sample player + blank space + header
 
-.bank 1 slot 1
-.section "Replayer" free
-.include "../Common/replayer_core_p4_rto3_8kHz.asm"
-PrepareForSample:
-  push hl
-  push bc
-    ld hl,+
-    ld bc,$0b7f
-    otir
-  pop bc
-  pop hl
-  ret
-+:
-.db $9f $bf $df $ff $81 $00 $a1 $00 $00 $c1 $00
-++:
-.ends
-.section "Sample players" free
-PlaySampleDI:
-  di
-    call PlaySample
-  ei
-  ret
-
-PlaySample:
-  call PrepareForSample
-  ld a,c
-  ld ($ffff),a
-  ld b,(hl) ; block count
-  inc hl
--:
-  push bc
-    call PLAY_SAMPLE
-  pop bc
-  inc c
-  ld a,c
-  ld ($ffff),a
-  ld hl,$8000
-  djnz -
-  ret
-.ends
+; We add an SDSC header, which rewrites the header so we also restore some values to match the original ROM
+.smsheader
+  productcode $01, $70, 0 ; 2.5 bytes
+  regioncode 4
+  reservedspace $ff, $ff
+.endsms
+.sdsctag 1.1, "Space Harrier (Arcade Voices)", "http://www.smspower.org/Hacks/SpaceHarrier-SMS-ArcadeVoices-Mod", "Maxim"
 
 .bank 0 slot 0
+
+; Patches to places already playing samples
 .orga $1dda
 .section "Get Ready sound test" force
-b1:
-  ld c,:GetReady
+  ld a,:GetReady
   ld hl,GetReady
   jp PlaySampleDI
 .ends
+
 .orga $1de2
 .section "Aargh sound test" force
-b2:
-  ld c,:Aargh
+  ld a,:Aargh
   ld hl,Aargh
   jp PlaySampleDI
 .ends
 
-; 11fb start music in game (3b)
+.orga $7e2a
+.section "Aargh in-game" overwrite
+  ld a,:Aargh
+  ld hl,Aargh
+  jp PlaySample
+.ends
+
+.orga $7e4f
+.section "Get Ready in-game?" overwrite
+  ld a,:GetReady
+  ld hl,GetReady
+  call PlaySample
+  nop ; to balance space
+.ends
+
+; Patches to insert a extra sample at the start of the game
+
 .orga $11fb
 .section "Welcome hack part 0" overwrite
-  ; don't start music yet
-  ld ($c700),a ; not sure if I can use this?
+  ; don't start music yet - remember the value here (seems unused)
+  ld ($c700),a
 .ends
 
 .orga $12dc
 .section "Welcome hack part 1" overwrite
   call WelcomeHack
 .ends
-/*
-.orga $1303
-.section "Welcome hack" overwrite
-Hack:
-call WelcomeHack
-.ends
-*/
-.bank 1 slot 1
+
 .section "WelcomeHack" free
 WelcomeHack:
   ; What I replaced to get here
@@ -110,37 +95,69 @@ WelcomeHack:
   or (hl)
   ret nz
 
-  call PrepareForSample
-  ld c,:Welcome
+  ; We freeze the game while playing
+  di
+  ld a,:Welcome
   ld hl,Welcome
   call PlaySample
-  ld c,:GetReady
+  ld a,:GetReady
   ld hl,GetReady
   call PlaySample
+  ei
   ; Start music
   ld a,($c700)
   ld ($c000),a
   ret
 .ends
 
-.bank 1 slot 1
-.orga $7e2a
-.section "Aargh in-game" overwrite
-b3:
-  ld c,:Aargh
-  ld hl,Aargh
-  jp PlaySample
+; The new sample player code
+
+.section "Replayer" free
+; This is the raw player, it needss to be wrapped to support multi-bank samples
+.include "../Common/replayer_core_p4_rto3_8kHz.asm"
 .ends
 
-.orga $7e4f
-.section "Get Ready in-game?" overwrite
-b4:
-  ld C,:GetReady
-  ld hl,GetReady
-  call PlaySample
-  nop ; to balance space
-.ends
+.section "Sample players" free
+; Player wrapped in di/ei, used for the sound test
+PlaySampleDI:
+  di
+    call PlaySample
+  ei
+  ret
 
+PSGSampleSettings:
+.db $9f $bf $df $ff ; Maximum attenuation on all channels
+.db $81 $00 ; Frequency 0 on tone channels
+.db $a1 $00 
+.db $c1 $00
+
+PlaySample:
+  ; page in
+  ld ($ffff),a
+
+  ; Prepare PSG settings for sample
+  push hl
+    ld hl,PSGSampleSettings
+    ld bc,$0a7f
+    otir
+  pop hl
+
+  ; Get block count
+  ld b,(hl)
+  inc hl
+  
+-:; PLay a block (from hl)
+  push bc
+    call PLAY_SAMPLE
+  pop bc
+  ; Switch to the next bank
+  ld hl,$ffff
+  inc (hl)
+  ld hl,$8000
+  ; And repeat
+  djnz -
+  ret
+.ends
 
 ; We add our data at the end of the ROM
 
