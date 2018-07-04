@@ -24,12 +24,10 @@ banks 30
 ; Because the sample player was in the same bank as its data, and gets invoked from paged code, we want to find some low memory space to put ours...
 ; Last 297 bytes of bank 1 seem unused... we also take out the header as we want to rewrite it...
 .unbackground $7ec7 $7fff
-
-; We need some space for the SDSC description somewhere in the lower 64KB... TODO not supported...
-;.unbackground $fed0 $ffff
+.unbackground $5B $65
 
 ; We add an SDSC header...
-;.sdsctag 1.0, "Altered Beast (Arcade Voices)", "A hack of Altered Beast to restore the sampled audio from the original arcade game", "Maxim"
+.sdsctag 1.0, "Altered Beast (Arcade Voices)", "http://www.smspower.org/Hacks/AlteredBeast-SMS-ArcadeVoices-Mod", "Maxim"
 
 ; ...and restore the original product code...
 .smsheader
@@ -40,9 +38,11 @@ banks 30
 .define RAM_LevelNumber $c08d
 .define RAM_FramesPerLetter $c080
 .define RAM_ModeControl $c0df
+.define RAM_ContinueCount $c088
 
 .bank 0 slot 0
-.orga $7ec7
+.org 0
+
 .section "Replayer" free
 .include "../Common/replayer_core_p4_rto3_8kHz.asm"
 .ends
@@ -94,18 +94,14 @@ StartHack:
   jr nz,+
   
   ; Play sample
-  di
   ld c,:RiseFromYourGrave
   ld hl,RiseFromYourGrave
-  ld a,:PlaySample
-  ld ($ffff),a
-  call PlaySample
-  ei
+  call PlayDI
 
 	ld a, $85 ; level 1 music
-	call $85C ; EnqueueMusicControl
-	ld a, $9B ; rise from grave sound effect
-	call $85C ; EnqueueMusicControl
+	call $85c ; EnqueueMusicControl
+	ld a, $9b ; rise from grave sound effect
+	call $85c ; EnqueueMusicControl
 
 	; what we replaced to get here 
 +:ld hl, RAM_FramesPerLetter
@@ -120,17 +116,40 @@ StartHack:
 .section "Boss fight hack" free
 BossFightHack:
   ; Play sample
-  di
   ld c,:WelcomeToYourDoom
   ld hl,WelcomeToYourDoom
-  ld a,:PlaySample
-  ld ($ffff),a
-  call PlaySample
-  ei
+  call PlayDI
   
   ; What we replaced to get here
 	ld a, $01 ; start fade out (?)
 	ld (RAM_ModeControl), a
+  ret
+.ends
+
+.orga $ea1
+.section "Continue hook" overwrite
+  call ContinueHack
+.ends
+
+.section "Continue hack" free
+ContinueHack:
+  ; Play sample
+  ld c,:NeverGiveUp
+  ld hl,NeverGiveUp
+  call PlayDI
+
+  ; What we replaced to get here
+	ld hl, RAM_ContinueCount
+  ret
+.ends
+
+.section "Play sample with DI" free
+PlayDI:
+  ld a,:PlaySample
+  ld ($ffff),a
+  di
+  call PlaySample
+  ei
   ret
 .ends
 
@@ -193,7 +212,7 @@ PlayRoar:
   jp PlaySample
 .ends
 
-; Supporting code, can go anywhere
+; Supporting code, can go anywhere in this bank
 
 .section "Play sample" free
 PlaySample:
@@ -234,7 +253,6 @@ PrepareForSample:
 .define bankspace $4000
 .bank databank slot 2
 .org 0
-; Used:
 Aaaaaargh:          addfile "Aaaaaargh.wav.pcmenc" ; Player death
 Wolf:               addfile "Wolf.wav.pcmenc" ; Transform to wolf (stages 1 and 5)
 Growl4:             addfile "Growl 4.wav.pcmenc" ; Transform to dragon (stage 2)
@@ -244,9 +262,8 @@ Hahahahaha:         addfile "Hahahahaha.wav.pcmenc" ; Nef takes orbs after boss 
 PowerUp:            addfile "Power Up!.wav.pcmenc" ; First two power orbs
 RiseFromYourGrave:  addfile "Rise From Your Grave.wav.pcmenc" ; Start of game
 WelcomeToYourDoom:  addfile "Welcome To Your Doom!.wav.pcmenc" ; Nef encounter
-
-; TODO:
 NeverGiveUp:        addfile "Never Give Up.wav.pcmenc" ; Continue
+
 
 ;Aaaaaaaaaaa:        addfile "Aaaaaaaaaaa.wav.pcmenc" ; Unused?
 ;Growl1:             addfile "Growl 1.wav.pcmenc" ; Unused?
