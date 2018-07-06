@@ -64,7 +64,7 @@ banks 18
 .ends
 
 .orga $7e4f
-.section "Get Ready in-game?" overwrite
+.section "Get Ready in-game" overwrite
   ld a,:GetReady
   ld hl,GetReady
   call PlaySample
@@ -84,6 +84,7 @@ banks 18
   call WelcomeHack
 .ends
 
+.org 0
 .section "WelcomeHack" free
 WelcomeHack:
   ; What I replaced to get here
@@ -102,12 +103,12 @@ WelcomeHack:
 
   ; We freeze the game while playing
   di
-  ld a,:Welcome
-  ld hl,Welcome
-  call PlaySample
-  ld a,:GetReady
-  ld hl,GetReady
-  call PlaySample
+    ld a,:Welcome
+    ld hl,Welcome
+    call PlaySample
+    ld a,:GetReady
+    ld hl,GetReady
+    call PlaySample
   ei
   ; Start music
   ld a,(RAM_Unused)
@@ -117,6 +118,7 @@ WelcomeHack:
 
 ; The new sample player code
 
+.org 0
 .section "Replayer" free
 ; This is the raw player, it needss to be wrapped to support multi-bank samples
 .include "../Common/replayer_core_p4_rto3_8kHz.asm"

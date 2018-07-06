@@ -8,4 +8,4 @@ Make sure to patch the "50Hz and 60Hz" version of the game. The 50Hz variant is 
 Version history:
 
 v1.0 - initial release
-v1.1 - added SDSC tag, improved quality of "Welcome to the Fantasy Zone, Get Ready"
+v1.1 - added SDSC tag
