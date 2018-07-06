@@ -24,13 +24,13 @@ banks 30
 .background "Altered Beast.sms"
 .unbackground $32cc7 $33fff ; old sample player and old samples
 .unbackground $7ec7 $7fff ; unused space + header
-.unbackground $5B $65 ; unused space
+.unbackground $5b $65 ; unused space
 
 ; We add an SDSC header, which rewrites the header so we also restore some values to match the original ROM
 .smsheader
   productcode $18, $70, 0 ; 2.5 bytes
 .endsms
-.sdsctag 1.0, "Altered Beast (Arcade Voices)", "http://www.smspower.org/Hacks/AlteredBeast-SMS-ArcadeVoices-Mod", "Maxim"
+.sdsctag 1.1, "Altered Beast (Arcade Voices)", "http://www.smspower.org/Hacks/AlteredBeast-SMS-ArcadeVoices-Mod", "Maxim"
 
 ; RAM mapping
 .define RAM_LevelNumber $c08d
@@ -38,10 +38,8 @@ banks 30
 .define RAM_ModeControl $c0df
 .define RAM_ContinueCount $c088
 
-.bank 0 slot 0
-
 ; Patches to places already playing samples
-
+.bank 12 slot 2
 .org $2cc7
 .section "Power Up" force
 PlayPowerUp:
@@ -71,63 +69,31 @@ PlayDeath:
 PlayRoar:
   ld a,(RAM_LevelNumber)
   or a
-  jp z,+
+  jp z,_Wolf ; 0
   dec a
-  jp z,++
+  jp z,_Dragon ; 1
   dec a
-  jp z,++
-  dec a
-  jp z,++
-  ; Stage 5: fall through for wolf again
-+:
+  jp z,_Tiger ; 2
+  ; 4 = stage 5: fall through for wolf again
+_Wolf:
   ld c,:Wolf
   ld hl,Wolf
   jp PlaySample
-++:
-  ld c,:Growl4
-  ld hl,Growl4
+_Dragon:
+  ld c,:Dragon
+  ld hl,Dragon
   jp PlaySample
-+:
-  ld c,:Growl2
-  ld hl,Growl2
-  jp PlaySample
-+:
-  ld c,:Growl3
-  ld hl,Growl3
+_Tiger:
+  ld c,:Tiger
+  ld hl,Tiger
   jp PlaySample
 .ends
 
-.section "Replayer" free
-.include "../Common/replayer_core_p4_rto3_8kHz.asm"
-.ends
+.bank 0 slot 0
 
-.section "Low code" free
-PlaySampleLowCode:
-  ld a,($ffff)
-  push af
-    ld a,c
-    ld ($ffff),a
-    ld b,(hl) ; block count
-    inc hl
--:  push bc
-      call PLAY_SAMPLE
-    pop bc
-    inc c
-    ld a,c
-    ld ($ffff),a
-    ld hl,$8000
-    djnz -
-  pop af
-  ; Restore paging
-  ld ($ffff),a
-  ret
-.ends
+; Patches to insert extra samples...
 
-; Code hooks
-.org $0fb7
-.section "Game start hook" overwrite
- call StartHack
-.ends
+; "Rise from your grave" at the start of the game
 
 .org $f5e
 .section "nop out sound effect start" overwrite
@@ -136,11 +102,17 @@ PlaySampleLowCode:
 .endr
 .ends
 
-.org $873
-.section "Disable level 1 music start" overwrite
-.db 0
+.org $0fb7
+.section "Game start hook" overwrite
+ call StartHack
 .ends
 
+.org $873
+.section "Disable level 1 music start" overwrite
+.db 0 ; entry in per-level music table
+.ends
+
+.org 0
 .section "Game start hack" free
 StartHack:
   ld a,(RAM_FramesPerLetter)
@@ -167,6 +139,7 @@ StartHack:
   jp BossFightHack
 .ends
 
+.org 0
 .section "Boss fight hack" free
 BossFightHack:
   ; Play sample
@@ -185,6 +158,7 @@ BossFightHack:
   call ContinueHack
 .ends
 
+.org 0
 .section "Continue hack" free
 ContinueHack:
   ; Play sample
@@ -197,6 +171,7 @@ ContinueHack:
   ret
 .ends
 
+.org 0
 .section "Play sample with DI" free
 PlayDI:
   ld a,:PlaySample
@@ -207,10 +182,35 @@ PlayDI:
   ret
 .ends
 
+; The new sample player code
+
+.section "Replayer" free
+.include "../Common/replayer_core_p4_rto3_8kHz.asm"
+.ends
+
+.section "Low code" free
+PlaySampleLowCode:
+  ld a,($ffff)
+  push af
+    ld a,c
+    ld ($ffff),a
+    ld b,(hl) ; block count
+    inc hl
+-:  push bc
+      call PLAY_SAMPLE
+    pop bc
+    ld hl,$ffff
+    inc (hl)
+    ld hl,$8000
+    djnz -
+  pop af
+  ; Restore paging
+  ld ($ffff),a
+  ret
+.ends
+
 .bank 12 slot 2
-
-; Code hooks
-
+.org 0
 
 ; Supporting code, can go anywhere in this bank
 
@@ -237,14 +237,18 @@ PrepareForSample:
   ; Set PSG channel settings
   push hl
   push bc
-    ld hl,+
+    ld hl,PSGSampleSettings
     ld bc,$0b7f
     otir
   pop bc
   pop hl
   ret
-+:
-.db $9f $bf $df $ff $81 $00 $a1 $00 $00 $c1 $00
+
+PSGSampleSettings:
+.db $9f $bf $df $ff ; Maximum attenuation on all channels
+.db $81 $00 ; Frequency 0 on tone channels
+.db $a1 $00 
+.db $c1 $00
 .ends
 
 ; We add our data at the end of the ROM
@@ -255,9 +259,8 @@ PrepareForSample:
 .org 0
 Aaaaaargh:          addfile "Aaaaaargh.wav.pcmenc" ; Player death
 Wolf:               addfile "Wolf.wav.pcmenc" ; Transform to wolf (stages 1 and 5)
-Growl4:             addfile "Growl 4.wav.pcmenc" ; Transform to dragon (stage 2)
-Growl2:             addfile "Growl 2.wav.pcmenc" ; Transform to bear (stage 3)
-Growl3:             addfile "Growl 3.wav.pcmenc" ; Transform to tiger (stage 4)
+Dragon:             addfile "Growl 4.wav.pcmenc" ; Transform to dragon (stage 2)
+Tiger:              addfile "Growl 3.wav.pcmenc" ; Transform to tiger (stage 3)
 Hahahahaha:         addfile "Hahahahaha.wav.pcmenc" ; Nef takes orbs after boss is defeated
 PowerUp:            addfile "Power Up!.wav.pcmenc" ; First two power orbs
 RiseFromYourGrave:  addfile "Rise From Your Grave.wav.pcmenc" ; Start of game
@@ -266,6 +269,7 @@ NeverGiveUp:        addfile "Never Give Up.wav.pcmenc" ; Continue
 
 
 ;Aaaaaaaaaaa:        addfile "Aaaaaaaaaaa.wav.pcmenc" ; Unused?
+;Bear:               addfile "Growl 2.wav.pcmenc" ; Transform to bear (stage 4) (not in SMS version!)
 ;Growl1:             addfile "Growl 1.wav.pcmenc" ; Unused?
 ;Ha:                 addfile "Ha.wav.pcmenc" ; Unused?
 ;HuhUh:              addfile "Huh,uh.wav.pcmenc" ; Unused?
