@@ -50,11 +50,11 @@
   
   ; Compute the chunk count
   ; = 1 + ceil((size - free - 3) / (maximum size + 2))
-  .db (filesize - bankspace - 3) / 16382 + 2
-  .redefine bankspace bankspace-1
   .printt "needs "
   .printv dec (filesize - bankspace - 3) / 16382 + 2
   .printt " banks: "
+  .db (filesize - bankspace - 3) / 16382 + 2
+  .redefine bankspace bankspace-1
   
   
   ; add as chunks
