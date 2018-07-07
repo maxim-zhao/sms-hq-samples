@@ -246,9 +246,9 @@ PrepareForSample:
 
 PSGSampleSettings:
 .db $9f $bf $df $ff ; Maximum attenuation on all channels
-.db $81 $00 ; Frequency 0 on tone channels
-.db $a1 $00 
-.db $c1 $00
+.db $80 $00 ; Frequency 0 on tone channels
+.db $a0 $00 
+.db $c0 $00
 .ends
 
 ; We add our data at the end of the ROM

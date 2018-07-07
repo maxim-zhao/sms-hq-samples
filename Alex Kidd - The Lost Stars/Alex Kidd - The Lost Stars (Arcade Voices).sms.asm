@@ -56,9 +56,9 @@ PlayFindTheMiracleBall:
 .section "Sample multi-bank player" free
 PSGSampleSettings:
 .db $9f $bf $df $ff ; Maximum attenuation on all channels
-.db $81 $00 ; Frequency 0 on tone channels
-.db $a1 $00 
-.db $c1 $00
+.db $80 $00 ; Frequency 0 on tone channels
+.db $a0 $00 
+.db $c0 $00
 
 PlaySample:
   call   $89c9           ; 00E9E2 CD C9 89 ; Init chips
@@ -68,7 +68,7 @@ PlaySample:
   push hl
   push bc
     ld hl,PSGSampleSettings
-    ld bc,$0b7f
+    ld bc,$0a7f
     otir
   pop bc
   pop hl
