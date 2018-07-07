@@ -238,7 +238,7 @@ PrepareForSample:
   push hl
   push bc
     ld hl,PSGSampleSettings
-    ld bc,$0b7f
+    ld bc,$0a7f
     otir
   pop bc
   pop hl
