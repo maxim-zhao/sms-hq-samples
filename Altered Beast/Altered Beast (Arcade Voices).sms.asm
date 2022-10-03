@@ -30,7 +30,7 @@ banks 30
 .smsheader
   productcode $18, $70, 0 ; 2.5 bytes
 .endsms
-.sdsctag 1.1, "Altered Beast (Arcade Voices)", "http://www.smspower.org/Hacks/AlteredBeast-SMS-ArcadeVoices-Mod", "Maxim"
+.sdsctag 1.20, "Altered Beast (Arcade Voices)", "http://www.smspower.org/Hacks/AlteredBeast-SMS-ArcadeVoices-Mod", "Maxim"
 
 ; RAM mapping
 .define RAM_LevelNumber $c08d

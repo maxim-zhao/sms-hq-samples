@@ -7,3 +7,4 @@ Source is available at https://github.com/maxim-zhao/sms-hq-samples
 
 v1.0 - initial release
 v1.1 - boosted loudness of samples, fixed incorrect animal sounds on levels 3 and 4
+v1.2 - corrected a bug which might make voices not sound right sometimes
