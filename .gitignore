@@ -7,3 +7,7 @@ disassembly
 *.sym
 disasm
 */original samples/
+*.ips
+*.bps
+*.pcmenc
+/Space Harrier/sharrier/

@@ -32,7 +32,7 @@ banks 18
   regioncode 4
   reservedspace $ff, $ff
 .endsms
-.sdsctag 1.1, "Space Harrier (Arcade Voices)", "http://www.smspower.org/Hacks/SpaceHarrier-SMS-ArcadeVoices-Mod", "Maxim"
+.sdsctag 1.30, "Space Harrier (Arcade Voices)", "http://www.smspower.org/Hacks/SpaceHarrier-SMS-ArcadeVoices-Mod", "Maxim"
 
 ; RAM mapping
 .define RAM_MusicControl $c000 ; Write here to play music
@@ -99,7 +99,7 @@ WelcomeHack:
   or (hl)
   inc hl
   or (hl)
-  ret nz
+  jr nz,+
 
   ; We freeze the game while playing
   di
@@ -110,7 +110,15 @@ WelcomeHack:
     ld hl,GetReady
     call PlaySample
   ei
-  ; Start music
+  jr ++
+  
++:di
+    ld a,:DoingGreat
+    ld hl,DoingGreat
+    call PlaySample
+  ei
+
+++:; Start music
   ld a,(RAM_Unused)
   ld (RAM_MusicControl),a
   ret
@@ -153,7 +161,7 @@ PlaySample:
   ld b,(hl)
   inc hl
   
--:; PLay a block (from hl)
+-:; Play a block (from hl)
   push bc
     call PLAY_SAMPLE
   pop bc
@@ -173,6 +181,7 @@ PlaySample:
 .define bankspace $4000
 .bank databank slot 2
 .org 0
-Welcome:  addfile "welcometothefantasyzone.8k.wav.pcmenc"
-Aargh:    addfile "aargh.8k.wav.pcmenc"
-GetReady: addfile "getready.8k.wav.pcmenc"
+Welcome:    addfile "welcometothefantasyzone.8k.wav.pcmenc"
+Aargh:      addfile "aargh.8k.wav.pcmenc"
+GetReady:   addfile "getready.8k.wav.pcmenc"
+DoingGreat: addfile "youredoinggreat.8k.wav.pcmenc"
