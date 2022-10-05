@@ -11,3 +11,6 @@ disasm
 *.bps
 *.pcmenc
 /Space Harrier/sharrier/
+auto.makefile
+linkfile
+*.o

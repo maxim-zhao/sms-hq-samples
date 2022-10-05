@@ -52,7 +52,7 @@
   ; = 1 + ceil((size - free - 3) / (maximum size + 2))
   .printt "needs "
   .printv dec (filesize - bankspace - 3) / 16382 + 2
-  .printt " banks: "
+  .printt " bank(s): "
   .db (filesize - bankspace - 3) / 16382 + 2
   .redefine bankspace bankspace-1
   
