@@ -108,7 +108,7 @@ SampleTrampolineCheckpoint:
 SampleTrampolineCongratulations:
   ; This is called repeatedly, we want to only hook the first call
   push af
-    ld a, ($dc00)
+    ld a, ($dc00) ; This seems to be an unused memory location, zero-initialised
     or a
     call z, +
   pop af
@@ -142,7 +142,7 @@ PSGSampleSettings:
 
 PlaySample:
   ; Pause music
-  call $5c93 ; TODO confirm this
+  call $5c93
   ; Disable FM (regardless of whether it was enabled)
   xor a
   out ($f2),a
@@ -174,7 +174,6 @@ PlaySample:
   ; Restore FM mode
   ld a,($c002) ; 1 for FM, 0 for PSG
   out ($f2),a 
-  ; Do we need to restore the muted chips? Probably not?
   ret
 .ends
 
